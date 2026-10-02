@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ResumeLens AI – Resume & Portfolio Analyzer</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);background:#0B0F19}
+html{scroll-behavior:smooth;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:#0B0F19;color:#e2e8f0;font-family:Inter,ui-sans-serif,system-ui,sans-serif;overflow-x:hidden}
+@keyframes laser{0%{top:0}100%{top:100%}}
+@keyframes flick{0%,100%{opacity:.05}50%{opacity:.9}}
+@keyframes shimmer{to{background-position:200% center}}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+@keyframes pop{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
+@keyframes slide{from{transform:translateX(100%)}to{transform:none}}
+.shimmer{background:linear-gradient(90deg,#6366f1,#2dd4bf,#a78bfa,#6366f1);background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 3s linear infinite}
+.rise{animation:rise .8s ease-out both}
+.pop{animation:pop .5s cubic-bezier(.2,1.4,.4,1) both}
+.glass{background:rgba(255,255,255,.04);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.1)}
+.lift{transition:all .5s ease-out}.lift:hover{transform:translateY(-8px);border-color:rgba(99,102,241,.5);box-shadow:0 20px 60px -15px rgba(99,102,241,.45)}
+textarea{scrollbar-width:thin}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const P = {
+  sparkles:["M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"],
+  key:["M2 15.5a5.5 5.5 0 1 0 11 0 5.5 5.5 0 1 0-11 0","m21 2-9.6 9.6","m15.5 7.5 3 3L22 7l-3-3"],
+  x:["M18 6 6 18","m6 6 12 12"],
+  down:["M12 5v14","m19 12-7 7-7-7"],
+  check:["M20 6 9 17l-5-5"],
+  scan:["M3 7V5a2 2 0 0 1 2-2h2","M17 3h2a2 2 0 0 1 2 2v2","M21 17v2a2 2 0 0 1-2 2h-2","M7 21H5a2 2 0 0 1-2-2v-2","M7 12h10"],
+  target:["M2 12a10 10 0 1 0 20 0 10 10 0 1 0-20 0","M6 12a6 6 0 1 0 12 0 6 6 0 1 0-12 0","M10 12a2 2 0 1 0 4 0 2 2 0 1 0-4 0"],
+  chat:["M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"],
+  shield:["M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"],
+  file:["M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z","M14 2v4a2 2 0 0 0 2 2h4","M10 13H8","M16 17H8"],
+  zap:["M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"],
+  brain:["M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18z","M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18z","M12 5v13"],
+};
+const Icon = ({ n, s = 20, c = "" }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={c}>
+    {P[n].map((d, i) => <path key={i} d={d} />)}
+  </svg>
+);
+
+const SAMPLE_JD = `Senior Frontend Engineer – Fintech Platform
+We are looking for a Senior Frontend Engineer to build our customer dashboard.
+Requirements: 5+ years with React and TypeScript, strong JavaScript fundamentals, experience with GraphQL APIs, Node.js, testing with Jest, CI/CD pipelines, Docker and AWS. Knowledge of accessibility, performance optimization and system design. Bonus: Next.js, Tailwind, Kubernetes, A/B testing and leadership of small teams.`;
+const SAMPLE_RESUME = `Alex Morgan – Frontend Developer
+Skills: React, JavaScript, Node.js, Tailwind, Docker, REST, Jest, Figma
+- Built a real-time analytics dashboard in React and Node.js serving 40k daily users, cutting load time by 38% through performance tuning.
+- Led a team of 3 to migrate a legacy app to Next.js with Tailwind and automated CI/CD using Docker.
+- Created a design-system component library with accessibility audits and Jest test coverage above 90%.
+- Personal project: Expense tracker with REST API, Node.js and PostgreSQL.`;
+
+const DICT = ["react","typescript","javascript","node.js","graphql","aws","docker","kubernetes","ci/cd","python","sql","postgresql","tailwind","next.js","redis","jest","testing","microservices","rest","figma","accessibility","performance","agile","leadership","mongodb","terraform","machine learning","llm","system design","a/b testing"];
+const cap = k => k.length <= 4 || /[.\/]/.test(k) ? k.toUpperCase().replace("NODE.JS","Node.js").replace("NEXT.JS","Next.js") : k[0].toUpperCase() + k.slice(1);
+
+function mockAnalyze(jd, rs) {
+  const J = jd.toLowerCase(), R = rs.toLowerCase();
+  let kws = DICT.filter(k => J.includes(k));
+  if (kws.length < 3) kws = ["react","typescript","graphql","docker","aws","testing","performance"];
+  const matched = kws.filter(k => R.includes(k)), missing = kws.filter(k => !R.includes(k));
+  const score = Math.max(12, Math.min(97, Math.round((matched.length / kws.length) * 92 + 4)));
+  const lines = rs.split("\n").map(l => l.replace(/^[-•*\s]+/, "").trim()).filter(l => l.length > 35);
+  const projects = lines.map(t => ({ text: t, rel: Math.min(98, 28 + kws.filter(k => t.toLowerCase().includes(k)).length * 22) }))
+    .sort((a, b) => b.rel - a.rel).slice(0, 4);
+  const prep = [...missing.slice(0, 2).map(k => `Your resume doesn't mention ${cap(k)}. How would you get productive with it in your first month?`),
+    ...matched.slice(0, 2).map(k => `Walk me through the hardest problem you solved using ${cap(k)}.`)];
+  return { score, matched: matched.map(cap), missing: missing.map(cap), projects, prep, source: "demo" };
+}
+
+async function geminiAnalyze(key, jd, rs) {
+  const prompt = `Compare this resume to the job description. Reply ONLY with JSON (no markdown): {"score":0-100,"matched":[keywords],"missing":[keywords],"projects":[{"text":"resume project/bullet","rel":0-100}],"prep":[4 interview questions]}.\n\nJOB DESCRIPTION:\n${jd}\n\nRESUME:\n${rs}`;
+  const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent", {
+    method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+  });
+  if (!r.ok) throw new Error("API " + r.status);
+  const d = await r.json();
+  const t = d.candidates[0].content.parts[0].text.replace(/```json|```/g, "").trim();
+  return { ...JSON.parse(t), source: "gemini" };
+}
+
+function Particles() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const cv = ref.current, ctx = cv.getContext("2d"); let w, h, raf;
+    const size = () => { w = cv.width = innerWidth; h = cv.height = innerHeight; }; size();
+    const ps = Array.from({ length: 70 }, () => ({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - .5) * .35, vy: (Math.random() - .5) * .35 }));
+    const draw = () => {
+      ctx.clearRect(0, 0, w, h);
+      ps.forEach((p, i) => {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0 || p.x > w) p.vx *= -1; if (p.y < 0 || p.y > h) p.vy *= -1;
+        ctx.fillStyle = "rgba(129,140,248,.7)"; ctx.beginPath(); ctx.arc(p.x, p.y, 1.4, 0, 7); ctx.fill();
+        for (let j = i + 1; j < ps.length; j++) {
+          const q = ps[j], d = Math.hypot(p.x - q.x, p.y - q.y);
+          if (d < 120) { ctx.strokeStyle = `rgba(45,212,191,${.14 * (1 - d / 120)})`; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); }
+        }
+      });
+      raf = requestAnimationFrame(draw);
+    };
+    draw(); addEventListener("resize", size);
+    return () => { cancelAnimationFrame(raf); removeEventListener("resize", size); };
+  }, []);
+  return <canvas ref={ref} className="fixed inset-0 pointer-events-none z-0" />;
+}
+
+function Ring({ value }) {
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    let raf, t0;
+    const step = t => { t0 = t0 || t; const p = Math.min(1, (t - t0) / 1600); setV(Math.round(value * (1 - Math.pow(1 - p, 3)))); if (p < 1) raf = requestAnimationFrame(step); };
+    raf = requestAnimationFrame(step); return () => cancelAnimationFrame(raf);
+  }, [value]);
+  const C = 2 * Math.PI * 70, col = value >= 70 ? "#2dd4bf" : value >= 45 ? "#818cf8" : "#f472b6";
+  return (
+    <div className="relative w-52 h-52 mx-auto">
+      <svg viewBox="0 0 180 180" className="w-full h-full -rotate-90">
+        <circle cx="90" cy="90" r="70" fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="12" />
+        <circle cx="90" cy="90" r="70" fill="none" stroke={col} strokeWidth="12" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - v / 100)} style={{ filter: `drop-shadow(0 0 10px ${col})` }} />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-5xl font-extrabold text-white">{v}<span className="text-2xl text-slate-400">%</span></span>
+        <span className="text-xs tracking-widest text-slate-400 uppercase mt-1">Match Score</span>
+      </div>
+    </div>
+  );
+}
+
+function KeyModal({ open, onClose, apiKey, setApiKey }) {
+  const [val, setVal] = useState(apiKey);
+  useEffect(() => { setVal(apiKey); }, [open]);
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-md h-full glass bg-[#0B0F19]/95 p-8 flex flex-col gap-5" style={{ animation: "slide .4s ease-out" }} onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2"><Icon n="key" c="text-indigo-400" />API Configuration</h3>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10"><Icon n="x" /></button>
+        </div>
+        <p className="text-sm text-slate-400">Add your Google Gemini API key to run live AI analyses. Get one free at Google AI Studio.</p>
+        <input type="password" value={val} onChange={e => setVal(e.target.value)} placeholder="AIza..." autoComplete="off"
+          className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400 focus:shadow-[0_0_20px_rgba(99,102,241,.4)] transition-all" />
+        <div className="rounded-xl border border-teal-400/20 bg-teal-400/5 p-4 text-xs text-teal-200 flex gap-3">
+          <Icon n="shield" s={18} c="shrink-0 mt-0.5" />
+          <span>Your key lives only in this tab's memory. It is never stored, logged, or bundled into the app, and is sent only to Google's API.</span>
+        </div>
+        <div className="flex gap-3 mt-auto">
+          <button onClick={() => { setApiKey(""); setVal(""); onClose(); }} className="flex-1 py-3 rounded-xl border border-white/10 hover:bg-white/5 text-sm transition">Clear & use demo</button>
+          <button onClick={() => { setApiKey(val.trim()); onClose(); }} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 font-semibold text-sm hover:shadow-[0_0_30px_rgba(99,102,241,.6)] transition-all">Save key</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [jd, setJd] = useState(""), [rs, setRs] = useState("");
+  const [apiKey, setApiKey] = useState(""), [modal, setModal] = useState(false);
+  const [phase, setPhase] = useState("idle"), [res, setRes] = useState(null), [note, setNote] = useState("");
+  const [sy, setSy] = useState(0), [step, setStep] = useState(0);
+  const app = useRef(null), out = useRef(null);
+  const cells = useRef(Array.from({ length: 160 }, () => ({ d: Math.random() * 1.5, c: Math.random() > .5 ? "1" : "0" }))).current;
+  const steps = ["Parsing job description…", "Extracting semantic keywords…", "Scanning resume vectors…", "Computing match score…"];
+
+  useEffect(() => { const f = () => setSy(scrollY); addEventListener("scroll", f); return () => removeEventListener("scroll", f); }, []);
+
+  const run = async () => {
+    if (jd.trim().length < 20 || rs.trim().length < 20) { setNote("Please paste both a job description and a resume (or use sample data)."); return; }
+    setNote(""); setRes(null); setPhase("scan"); setStep(0);
+    const iv = setInterval(() => setStep(s => Math.min(3, s + 1)), 620);
+    const wait = new Promise(r => setTimeout(r, 2500));
+    let result;
+    if (apiKey) {
+      try { [result] = await Promise.all([geminiAnalyze(apiKey, jd, rs), wait]); }
+      catch (e) { await wait; result = mockAnalyze(jd, rs); setNote("Live analysis unavailable (" + e.message + "). Showing demo mode instead."); }
+    } else { await wait; result = mockAnalyze(jd, rs); }
+    clearInterval(iv); setRes(result); setPhase("done");
+    setTimeout(() => out.current && out.current.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+  };
+
+  const feats = [
+    ["brain", "Semantic Keyword Extraction", "Goes beyond literal matching to surface the skills, tools and competencies a role truly demands.", "from-indigo-500 to-violet-500"],
+    ["target", "Predictive Match Scoring", "A calibrated 0–100 score showing how an applicant tracking system is likely to rank your resume.", "from-teal-400 to-indigo-500"],
+    ["chat", "Automated Interview Prep", "Tailored questions generated from your strengths and gaps, so you walk in ready.", "from-violet-500 to-pink-500"],
+  ];
+
+  return (
+    <div className="relative min-h-screen">
+      <Particles />
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute w-[600px] h-[600px] rounded-full bg-indigo-600/25 blur-[140px] -left-40 top-0 transition-transform duration-300" style={{ transform: `translateY(${sy * .35}px) scale(${1 + Math.sin(sy / 300) * .15})` }} />
+        <div className="absolute w-[500px] h-[500px] rounded-full bg-teal-400/15 blur-[140px] -right-32 top-1/3 transition-transform duration-300" style={{ transform: `translateY(${-sy * .2}px) scale(${1 + Math.cos(sy / 280) * .15})` }} />
+        <div className="absolute w-[500px] h-[500px] rounded-full bg-violet-600/20 blur-[140px] left-1/3 bottom-0 transition-transform duration-300" style={{ transform: `translateX(${sy * .1}px)` }} />
+      </div>
+
+      <nav className="relative z-10 max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
+        <div className="flex items-center gap-2 font-bold text-lg text-white"><span className="p-2 rounded-xl bg-gradient-to-br from-indigo-500 to-teal-400"><Icon n="scan" s={18} /></span>ResumeLens<span className="text-teal-300">AI</span></div>
+        <button onClick={() => setModal(true)} className="glass rounded-full px-4 py-2 text-sm flex items-center gap-2 hover:border-indigo-400/60 transition"><Icon n="key" s={15} />{apiKey ? "Live mode" : "Demo mode"}</button>
+      </nav>
+
+      <header className="relative z-10 max-w-5xl mx-auto px-6 pt-16 pb-24 text-center">
+        <div className="rise inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 text-xs text-teal-300 mb-8"><Icon n="sparkles" s={14} />AI Resume & Portfolio Analyzer</div>
+        <h1 className="rise text-4xl sm:text-6xl lg:text-7xl font-extrabold leading-[1.05] tracking-tight text-white" style={{ animationDelay: ".1s" }}>
+          Transform Job Descriptions Into <span className="shimmer">Tailored Resume Blueprints</span>
+        </h1>
+        <p className="rise mt-6 text-lg text-slate-400 max-w-2xl mx-auto" style={{ animationDelay: ".25s" }}>
+          Paste a role and your resume. In seconds, see your match score, the keywords you're missing, which projects to lead with, and the interview questions to rehearse.
+        </p>
+        <button onClick={() => app.current.scrollIntoView({ behavior: "smooth" })} className="rise group mt-10 inline-flex items-center gap-3 rounded-full px-8 py-4 font-semibold text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-teal-400 hover:shadow-[0_0_50px_rgba(99,102,241,.7)] hover:scale-105 transition-all duration-500" style={{ animationDelay: ".4s" }}>
+          Analyze My Resume <span style={{ animation: "floaty 1.6s infinite" }}><Icon n="down" s={20} /></span>
+        </button>
+      </header>
+
+      <section ref={app} className="relative z-10 max-w-6xl mx-auto px-6 pb-20">
+        <div className="glass rounded-3xl p-6 sm:p-8 relative overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <h2 className="text-2xl font-bold text-white">Analyzer</h2>
+            <div className="flex items-center gap-3 text-sm">
+              <button onClick={() => { setJd(SAMPLE_JD); setRs(SAMPLE_RESUME); setNote(""); }} className="flex items-center gap-1.5 text-teal-300 hover:text-teal-200 underline-offset-4 hover:underline"><Icon n="sparkles" s={15} />Auto-Fill Sample Data</button>
+              <button onClick={() => setModal(true)} className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 hover:bg-white/10 hover:border-indigo-400/50 transition"><Icon n="key" s={15} />Configure API Key</button>
+            </div>
+          </div>
+          <div className="grid md:grid-cols-2 gap-5">
+            {[["Job Description", jd, setJd, "Paste the job description…"], ["Your Resume", rs, setRs, "Paste your resume text…"]].map(([l, v, set, ph]) => (
+              <label key={l} className="block">
+                <span className="flex items-center gap-2 text-sm text-slate-300 mb-2"><Icon n="file" s={15} c="text-indigo-400" />{l}</span>
+                <textarea value={v} onChange={e => set(e.target.value)} placeholder={ph} rows={11} className="w-full rounded-2xl bg-black/30 border border-white/10 p-4 text-sm text-slate-200 placeholder-slate-600 outline-none resize-y focus:border-indigo-400/70 focus:shadow-[0_0_30px_rgba(99,102,241,.25)] transition-all duration-500" />
+              </label>
+            ))}
+          </div>
+          {note && <p className="mt-4 text-sm text-amber-300">{note}</p>}
+          <div className="mt-6 flex justify-center">
+            <button onClick={run} disabled={phase === "scan"} className="inline-flex items-center gap-2 rounded-full px-8 py-3.5 font-semibold bg-gradient-to-r from-indigo-500 to-violet-500 hover:shadow-[0_0_40px_rgba(99,102,241,.6)] hover:scale-105 disabled:opacity-60 disabled:hover:scale-100 transition-all duration-500">
+              <Icon n="zap" s={18} />{phase === "scan" ? "Scanning…" : "Run Analysis"}
+            </button>
+          </div>
+
+          {phase === "scan" && (
+            <div className="absolute inset-0 z-20 bg-[#0B0F19]/90 backdrop-blur-md rounded-3xl flex flex-col items-center justify-center overflow-hidden">
+              <div className="absolute inset-0 grid grid-cols-16 font-mono text-teal-300/80 text-xs" style={{ gridTemplateColumns: "repeat(16,1fr)" }}>
+                {cells.map((c, i) => <span key={i} className="flex items-center justify-center" style={{ animation: `flick 1s ${c.d}s infinite` }}>{c.c}</span>)}
+              </div>
+              <div className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-teal-300 to-transparent" style={{ animation: "laser 1.25s ease-in-out infinite alternate", boxShadow: "0 0 40px 10px rgba(45,212,191,.6)" }} />
+              <div className="relative text-center">
+                <p className="text-xl font-semibold text-white">{steps[step]}</p>
+                <div className="mt-4 w-64 h-1.5 rounded-full bg-white/10 overflow-hidden mx-auto"><div className="h-full bg-gradient-to-r from-indigo-500 to-teal-300 transition-all duration-500" style={{ width: (step + 1) * 25 + "%" }} /></div>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {res && (
+        <section ref={out} className="relative z-10 max-w-6xl mx-auto px-6 pb-24 space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-3xl font-bold text-white">Analysis Dashboard</h2>
+            <span className="text-xs glass rounded-full px-3 py-1 text-slate-300">{res.source === "gemini" ? "Live · Gemini" : "Demo mode"}</span>
+          </div>
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="glass rounded-3xl p-8 lift pop flex flex-col justify-center"><Ring value={res.score} />
+              <p className="text-center text-sm text-slate-400 mt-4">{res.score >= 70 ? "Strong alignment. Polish and apply." : res.score >= 45 ? "Solid base. Close the keyword gaps." : "Significant gaps. Tailor heavily."}</p></div>
+            <div className="glass rounded-3xl p-6 lift pop lg:col-span-2" style={{ animationDelay: ".15s" }}>
+              <div className="grid sm:grid-cols-2 gap-6">
+                <div><h3 className="flex items-center gap-2 font-semibold text-teal-300 mb-3"><Icon n="check" s={16} />Matching ({res.matched.length})</h3>
+                  <div className="flex flex-wrap gap-2">{res.matched.length ? res.matched.map((k, i) => <span key={k} className="pop px-3 py-1 rounded-full text-xs bg-teal-400/10 border border-teal-400/30 text-teal-200" style={{ animationDelay: .3 + i * .06 + "s" }}>{k}</span>) : <span className="text-sm text-slate-500">None found</span>}</div></div>
+                <div><h3 className="flex items-center gap-2 font-semibold text-pink-300 mb-3"><Icon n="x" s={16} />Missing ({res.missing.length})</h3>
+                  <div className="flex flex-wrap gap-2">{res.missing.length ? res.missing.map((k, i) => <span key={k} className="pop px-3 py-1 rounded-full text-xs bg-pink-400/10 border border-pink-400/30 text-pink-200" style={{ animationDelay: .3 + i * .06 + "s" }}>{k}</span>) : <span className="text-sm text-slate-500">Nothing missing 🎉</span>}</div></div>
+              </div>
+            </div>
+          </div>
+          <div className="grid lg:grid-cols-2 gap-6">
+            <div className="glass rounded-3xl p-6 lift">
+              <h3 className="font-semibold text-white mb-4 flex items-center gap-2"><Icon n="target" s={18} c="text-indigo-400" />Project Relevance Mapping</h3>
+              <div className="space-y-4">{res.projects.map((p, i) => (
+                <div key={i}><div className="flex justify-between text-xs text-slate-400 mb-1.5"><span className="truncate pr-4 max-w-[80%]">{p.text}</span><span className="text-white font-semibold">{p.rel}%</span></div>
+                  <div className="h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-teal-300" style={{ width: p.rel + "%", transition: "width 1.4s ease-out " + i * .15 + "s", boxShadow: "0 0 12px rgba(45,212,191,.6)" }} /></div></div>))}</div>
+            </div>
+            <div className="glass rounded-3xl p-6 lift">
+              <h3 className="font-semibold text-white mb-4 flex items-center gap-2"><Icon n="chat" s={18} c="text-violet-400" />Interview Prep</h3>
+              <ol className="space-y-3">{res.prep.map((q, i) => <li key={i} className="flex gap-3 text-sm text-slate-300"><span className="shrink-0 w-6 h-6 rounded-full bg-violet-500/20 text-violet-300 text-xs flex items-center justify-center">{i + 1}</span>{q}</li>)}</ol>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section className="relative z-10 max-w-6xl mx-auto px-6 py-20">
+        <h2 className="text-3xl sm:text-4xl font-bold text-center text-white mb-3">Built to get you <span className="shimmer">shortlisted</span></h2>
+        <p className="text-center text-slate-400 mb-12">Three engines working together on every analysis.</p>
+        <div className="grid md:grid-cols-3 gap-6">
+          {feats.map(([ic, t, d, g]) => (
+            <div key={t} className="glass rounded-3xl p-8 lift">
+              <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${g} flex items-center justify-center mb-6 shadow-lg`} style={{ animation: "floaty 4s ease-in-out infinite" }}><Icon n={ic} s={26} c="text-white" /></div>
+              <h3 className="text-xl font-semibold text-white mb-2">{t}</h3><p className="text-slate-400 text-sm leading-relaxed">{d}</p>
+            </div>))}
+        </div>
+      </section>
+
+      <footer className="relative z-10 border-t border-white/10 mt-10 py-20 text-center overflow-hidden">
+        <div className="absolute left-1/2 -translate-x-1/2 top-0 w-[500px] h-40 bg-indigo-500/20 blur-[90px] rounded-full" />
+        <p className="relative text-4xl sm:text-6xl font-extrabold tracking-tight shimmer inline-block" style={{ animation: "shimmer 3s linear infinite, floaty 5s ease-in-out infinite" }}>Made By Vishwam Phalke</p>
+        <p className="relative mt-4 text-xs tracking-[.3em] uppercase text-slate-500">ResumeLens AI · Resume & Portfolio Analyzer</p>
+      </footer>
+
+      <KeyModal open={modal} onClose={() => setModal(false)} apiKey={apiKey} setApiKey={setApiKey} />
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
